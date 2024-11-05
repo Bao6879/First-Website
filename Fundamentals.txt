@@ -1,0 +1,1967 @@
+/*
+    Name: Tran Pham Gia Bao
+ Date: 30/10/2024
+ Project: War simulator: Hand of God edition
+ Version: V4.1 Final update
+ Change Log: Polished up a couple things, commenting and small bug fixes
+ */
+//nodeLocation stores properties of all nodes, projectiles stores properties of projectiles, locationNode is a temporary stand-in for nodeLocation
+String nodeLocation="", projectiles="", locationNode="";
+//The 20 strings for the neighbors of each node
+String edges1="", edges2="", edges3="", edges4="", edges5="", edges6="", edges7="", edges8="", edges9="", edges10="", edges11="", edges12="", edges13="", edges14="", edges15="", edges16="", edges17="", edges18="", edges19="", edges20="";
+int numNodes=20, counter=0, interval=40, AICounter=0, AIInterval=100, incrementValue=10, nodeMax=120, allyHelp=20, team1=0, team2=0, team3=0, team4=0;
+//The simulation has 4 states: Intro, set up, running and ended. 0 is intro
+int userClicked=0, userTeam=0, pause=0, speed=1, gameState=0;
+//Text color and incremental values for intro
+int text1=1, text2=1, text3=1, text4=1, text5=1, text6=1, incr1=2, incr2=2, incr3=2, incr4=2, incr5=2, incr6=2;
+//The OG four colors for the teams
+color color1=color(255, 0, 0), color2=color(0, 35, 245), color3=color(255, 253, 85), color4=color(117, 249, 77);
+//Speed for all projectile to move at
+float globalSpeed=sqrt(2);
+//Creates border of the field, scoreboard and player buttons
+void gridInitiate()
+{
+  strokeWeight(5);
+  stroke(255);
+  //Creating borders of the field
+  line(2, 2, width, 2);
+  line(2, 2, 2, height);
+  line(2, height-2, width, height);
+  line(width-2, 2, width, height);
+  line(336, 2, 336, height);
+  line(2, 250, 336, 250);
+  //UI for player functions
+  //Color selector
+  int i;
+  strokeWeight(0);
+  for (i=0; i<4; i++)
+  {
+    fill(240);
+    if (i+1==userTeam)
+      rect(i*80+10, 185, 80, 60);
+    else
+      rect(i*80+15, 190, 70, 50);
+    if (i==0)
+      fill(color1);
+    else if (i==1)
+      fill(color2);
+    else if (i==2)
+      fill(color3);
+    else
+      fill(color4);
+    rect(i*80+20, 195, 60, 40);
+  }
+  //Creating all the squares for all rows except fourth
+  //Slight background to make a small 3D look
+  fill(200);
+  square(267, 14, 60);
+  rect(167, 14, 80, 60);
+  rect(27, 14, 120, 60);
+  square(266, 13, 60);
+  rect(166, 13, 80, 60);
+  rect(26, 13, 120, 60);
+  fill(255);
+  square(265, 12, 60);
+  rect(165, 12, 80, 60);
+  rect(25, 12, 120, 60);
+  rect(78, 80, 180, 30);
+  fill(126);
+  rect(83, 85, 170, 20);
+  fill(255);
+  textSize(20);
+  text("Courtesy of Tran Pham Gia Bao", 45, 150);
+  text("20108791", 130, 170);
+  //Increment changer
+  fill(255);
+  triangle(268, 85, 268, 105, 288, 95);
+  triangle(298, 85, 298, 105, 318, 95);
+  triangle(308, 85, 308, 105, 328, 95);
+  triangle(68, 85, 68, 105, 48, 95);
+  triangle(38, 85, 38, 105, 18, 95);
+  triangle(28, 85, 28, 105, 8, 95);
+  fill(0);
+  textSize(20);
+  text("Increment value: "+incrementValue, 86, 100);
+  //Pause button
+  fill(0);
+  if (pause==0)
+  {
+    rect(275, 17, 15, 50);
+    rect(300, 17, 15, 50);
+  } else
+    triangle(280, 25, 280, 65, 315, 45);
+  //Speed changer
+  if (speed==1)
+  {
+    textSize(15);
+    text("1X", 195, 25);
+    triangle(190, 30, 190, 70, 225, 50);
+  } else if (speed==2)
+  {
+    textSize(15);
+    text("2X", 195, 25);
+    triangle(175, 30, 175, 70, 210, 50);
+    triangle(200, 30, 200, 70, 235, 50);
+  } else
+  {
+    textSize(15);
+    text("0.5X", 195, 25);
+    triangle(225, 30, 225, 70, 190, 50);
+  }
+  //Restart button
+  textSize(30);
+  fill(255, 0, 0);
+  text("Restart?", 35, 50);
+  //Scoreboard design
+  textSize(25);
+  text("Scoreboard", 110, 300);
+  for (i=0; i<4; i++)
+  {
+    fill(240);
+    rect(15, i*70+315, 70, 50);
+    if (i==0)
+    {
+      fill(color1);
+      text(team1, 100, i*70+350);
+    } else if (i==1)
+    {
+      fill(color2);
+      text(team2, 100, i*70+350);
+    } else if (i==2)
+    {
+      fill(color3);
+      text(team3, 100, i*70+350);
+    } else
+    {
+      fill(color4);
+      text(team4, 100, i*70+350);
+    }
+    rect(20, i*70+320, 60, 40);
+  }
+  strokeWeight(10);
+}
+//Returns 1 if cursor is inside a certain rectangle
+int insideRect(int xBegin, int xEnd, int yBegin, int yEnd)
+{
+  if (mouseX>=xBegin && mouseX<=xEnd && mouseY>=yBegin && mouseY<=yEnd)
+    return 1;
+  return 0;
+}
+//Returns 1 if cursor is inside a certain rectangle, created because of an oversight writing the insideRect method
+int insideRectSum(int xBegin, int yBegin, int x, int y)
+{
+  if (mouseX>=xBegin && mouseX<=xBegin+x && mouseY>=yBegin && mouseY<=yBegin+y)
+    return 1;
+  return 0;
+}
+//Returns 1 if cursor is inside a certain triangle
+int insideTri(int xBelow, int yBelow, int xTop, int yTop, int xMid, int yMid)
+{
+  //Modified slightly to shorten it, since I only wrote 2 types of triangle
+  if (mouseY>=yBelow && mouseY<=yTop && mouseX>=xTop && mouseX<=xMid)
+    return 1;
+  if (mouseY>=yBelow && mouseY<=yTop && mouseX>=xMid && mouseX<=xTop)
+    return 1;
+  return 0;
+}
+//Rounds to a certain decimal point (3), expects the number to be rounded
+float roundTo(float num)
+{
+  num*=1000;
+  num=round(num);
+  num/=1000;
+  return num;
+}
+//Returns the distance between 2 points, takes in Xcord and Ycord of the 2 points
+float distance(float x, float y, float x1, float y1)
+{
+  float temp=sqrt((x-x1)*(x-x1)+(y-y1)*(y-y1));
+  return temp;
+}
+//Returns 1 if the distance from (e,f) to the line made by (a,b) and (c,d), 0 otherwise
+int onTheLine(float a, float b, float c, float d, float e, float f)
+{
+  //formula for finding distance from e, f to line created by a, b and c, d
+  float temp=abs((b-d)*e+(c-a)*f+a*d-c*b)/(sqrt((b-d)*(b-d)+(c-a)*(c-a)));
+  //So that the nodes don't collide
+  if (temp<=120)
+    return 1;
+  return 0;
+}
+//Extracts the number starting at the position from the string s
+float extract(int position, String s)
+{
+  int lcv=position, flag=0, neg=0; //loop control variable
+  float retVal=0, divisor=10;
+  char character;
+  while (lcv<s.length())
+  {
+    character=s.charAt(lcv);
+    if (character>='0' && character<='9') //if this is a number
+    {
+      if (neg==0)
+      {
+        if (flag==0) //integer
+        {
+          retVal*=10;
+          retVal+=character-'0';
+        } else //floating point number
+        {
+          retVal+=(character-'0')/divisor;
+          divisor*=10;
+          retVal=roundTo(retVal);
+        }
+      } else
+      {
+        if (flag==0) //integer
+        {
+          retVal*=10;
+          retVal-=character-'0';
+        } else //floating point number
+        {
+          retVal-=(character-'0')/divisor;
+          divisor*=10;
+          retVal=roundTo(retVal);
+        }
+      }
+    } else if (character=='.') //set flag=1 -> this is a floating point number
+      flag=1;
+    else if (character=='-') //set neg=1 -> this is a negative number
+      neg=1;
+    else
+      return retVal;
+    lcv++; //moves to the next character in the string
+  }
+  return retVal;
+}
+//Check to see if this color is selected, if it is, draw the rect so user know it's selected
+void checkColor(int r, int g, int b, int x, int y)
+{
+  int flag=0;
+  if (int(red(color1))==r && int(green(color1))==g && int(blue(color1))==b)
+    flag=1;
+  else if (int(red(color2))==r && int(green(color2))==g && int(blue(color2))==b)
+    flag=1;
+  else if (int(red(color3))==r && int(green(color3))==g && int(blue(color3))==b)
+    flag=1;
+  else if (int(red(color4))==r && int(green(color4))==g && int(blue(color4))==b)
+    flag=1;
+  if (flag==1)
+  {
+    fill(255);
+    rect(x-5, y-5, 133, 70);
+  }
+}
+//Approximates the speed of the simulation
+int calculatePoints()
+{
+  int score=0;
+  if (AIInterval==10)
+    score+=6;
+  else if (AIInterval==20)
+    score+=5;
+  else if (AIInterval==50)
+    score+=4;
+  else if (AIInterval==100)
+    score+=3;
+  else if (AIInterval==200)
+    score+=2;
+  else if (AIInterval==300)
+    score+=1;
+  if (interval==10)
+    score+=6;
+  else if (interval==20)
+    score+=5;
+  else if (interval==40)
+    score+=4;
+  else if (interval==80)
+    score+=3;
+  else if (interval==100)
+    score+=2;
+  else if (interval==200)
+    score+=1;
+  score+=(60-allyHelp)/10;
+  return score;
+}
+//Return 1 if deselecting the r, g, b is successful, 0 if not
+int deselect(int r, int g, int b)
+{
+  if (int(red(color1))==r && int(green(color1))==g && int(blue(color1))==b) //There is that color
+  {
+    color1=color(0, 0, 0); //Deselect it
+    return 1;
+  } else if (int(red(color2))==r && int(green(color2))==g && int(blue(color2))==b) //There is that color
+  {
+    color2=color(0, 0, 0); //Deselect it
+    return 1;
+  } else if (int(red(color3))==r && int(green(color3))==g && int(blue(color3))==b) //There is that color
+  {
+    color3=color(0, 0, 0); //Deselect it
+    return 1;
+  } else if (int(red(color4))==r && int(green(color4))==g && int(blue(color4))==b) //There is that color
+  {
+    color4=color(0, 0, 0); //Deselect it
+    return 1;
+  }
+  return 0;
+}
+//Selects the current r, g, b values
+void select(int r, int g, int b)
+{
+  if (int(red(color1))==0 && int(green(color1))==0 && int(blue(color1))==0) //There is an empty color
+    color1=color(r, g, b); //Select it
+  else if (int(red(color2))==0 && int(green(color2))==0 && int(blue(color2))==0) //There is an empty color
+    color2=color(r, g, b); //Select it
+  else if (int(red(color3))==0 && int(green(color3))==0 && int(blue(color3))==0) //There is an empty color
+    color3=color(r, g, b); //Select it
+  else if (int(red(color4))==0 && int(green(color4))==0 && int(blue(color4))==0) //There is an empty color
+    color4=color(r, g, b); //Select it
+}
+//Simulates 2D vector in C++ (dynamic container)
+//Means one can go from num1 to num2
+void pushBack(int num1, int num2)
+{
+  if (num1==1)
+    edges1+=str(num2)+",";
+  else if (num1==2)
+    edges2+=str(num2)+",";
+  else if (num1==3)
+    edges3+=str(num2)+",";
+  else if (num1==4)
+    edges4+=str(num2)+",";
+  else if (num1==5)
+    edges5+=str(num2)+",";
+  else if (num1==6)
+    edges6+=str(num2)+",";
+  else if (num1==7)
+    edges7+=str(num2)+",";
+  else if (num1==8)
+    edges8+=str(num2)+",";
+  else if (num1==9)
+    edges9+=str(num2)+",";
+  else if (num1==10)
+    edges10+=str(num2)+",";
+  else if (num1==11)
+    edges11+=str(num2)+",";
+  else if (num1==12)
+    edges12+=str(num2)+",";
+  else if (num1==13)
+    edges13+=str(num2)+",";
+  else if (num1==14)
+    edges14+=str(num2)+",";
+  else if (num1==15)
+    edges15+=str(num2)+",";
+  else if (num1==16)
+    edges16+=str(num2)+",";
+  else if (num1==17)
+    edges17+=str(num2)+",";
+  else if (num1==18)
+    edges18+=str(num2)+",";
+  else if (num1==19)
+    edges19+=str(num2)+",";
+  else if (num1==20)
+    edges20+=str(num2)+",";
+}
+//Count to a certain interval to call increments
+//This is to reduce lag and number of commands executed every frame, the same could be said for AICounter
+int intervalCounter()
+{
+  counter++;
+  if (counter>=interval)
+  {
+    counter=0;
+    return 1;
+  }
+  return 0;
+}
+//Count to a certain interval to call AI
+int AICounter()
+{
+  AICounter++;
+  if (AICounter>=AIInterval)
+  {
+    AICounter=0;
+    return 1;
+  }
+  return 0;
+}
+//Generates the graph for the first time, saves the values to be rendered again every frame
+void graphSetup()
+{
+  int i, flag=0, pos=0, pos1, pos2, index1, index2;
+  int team1=0, team2=0, team3=0, team4=0, team=0;
+  float tempX=0, tempY=0, currX=0, currY=0, destX, destY;
+  //Setting up nodes
+  for (i=0; i<numNodes; i++)
+  {
+    flag=0;
+    while (flag==0)
+    {
+      pos=0;
+      flag=1;
+      currX=roundTo(random(377, width-41)); //Finds a random spot within the boundaries of the field
+      currY=roundTo(random(41, height-41)); //-41 is to account for stroke width and size of nodes
+      //Check to see if this position is acceptable
+      while (pos<nodeLocation.length())
+      {
+        //Move the position iterator
+        tempX=extract(pos, nodeLocation);
+        pos+=str(tempX).length()+1;
+        tempY=extract(pos, nodeLocation);
+        pos+=str(tempY).length()+6; //Teams are 1 digits each, size is always 50 right now, + 3 commas
+        if (distance(currX, currY, tempX, tempY)<150) //Too close to the other nodes, regenerate
+        {
+          flag=0;
+          break;
+        }
+      }
+    }
+    circle(currX, currY, 50); //Create node
+    //Pick a team for this node, 1 for each at the beginning
+    while (true)
+    {
+      team=int(random(0, 17)/4);
+      if (team==1)
+      {
+        if (team1==1)
+          continue;
+        team1=1;
+        break;
+      } else if (team==2)
+      {
+        if (team2==1)
+          continue;
+        team2=1;
+        break;
+      } else if (team==3)
+      {
+        if (team3==1)
+          continue;
+        team3=1;
+        break;
+      } else if (team==4)
+      {
+        if (team4==1)
+          continue;
+        team4=1;
+        break;
+      } else
+        break;
+    }
+    //Add into a string to be accessed later, using commas to separate numbers
+    nodeLocation+=str(currX)+","+str(currY)+","+str(team)+","+str(50)+",";
+  }
+  pos1=0;
+  strokeWeight(10);
+  stroke(255);
+  index1=1;
+  //Setting up edges, the 3 nested whiles simulate 3 nested fors in an array
+  //Iterate through every node, this is the current node
+  while (pos1<nodeLocation.length())
+  {
+    currX=extract(pos1, nodeLocation);
+    pos1+=str(currX).length()+1;
+    currY=extract(pos1, nodeLocation);
+    pos1+=str(currY).length()+6; //Plus all the other predetermined numbers, skipping the extracting process for them
+    pos=0;
+    index2=1;
+    //Iterate through every other node, this is the destination to connect to the current node
+    while (pos<nodeLocation.length())
+    {
+      destX=extract(pos, nodeLocation);
+      pos+=str(destX).length()+1;
+      destY=extract(pos, nodeLocation);
+      pos+=str(destY).length()+6;
+      if (pos==pos1) //Skip if this is the same node
+      {
+        index2++;
+        continue;
+      }
+      flag=0;
+      pos2=0;
+      //Iterate through node aside from the ones above to check if it's in the way of connecting them
+      while (pos2<nodeLocation.length())
+      {
+        tempX=extract(pos2, nodeLocation);
+        pos2+=str(tempX).length()+1;
+        tempY=extract(pos2, nodeLocation);
+        pos2+=str(tempY).length()+6;
+        if (pos2==pos || pos2==pos1) //Skip if it's the same node as either the first two
+          continue;
+        //If the node lies between the starting node and the destination node
+        if ((tempX>=min(currX, destX) && tempX<=max(currX, destX)) || (tempY>=min(currY, destY) && tempY<=max(currY, destY)))
+          //If the distance from the node to the line is too close
+          if (onTheLine(currX, currY, destX, destY, tempX, tempY)==1)
+          {
+            //Reset
+            flag=1;
+            break;
+          }
+      }
+      //No nodes pose a problem, the edge can be generated
+      if (flag==0)
+      {
+        if (random(100)<=1000) //Chance of edge being created
+        {
+          line(currX, currY, destX, destY);
+          //Now theres a way from index1 to index2 and vice versa
+          pushBack(index1, index2);
+          pushBack(index2, index1);
+        }
+      }
+      index2++;
+    }
+    index1++;
+  }
+}
+//Increase every team node number by incrementalValue, capped at nodeMax
+void increments()
+{
+  int pos=0, num, team;
+  //nodeLocation will change, get a String to replace it
+  String temp="";
+  float currX, currY;
+  //Iterate through every node
+  while (pos<nodeLocation.length())
+  {
+    //X cords of the node
+    currX=extract(pos, nodeLocation);
+    pos+=str(currX).length()+1;
+    temp+=str(currX)+",";
+    //Y cords of the node
+    currY=extract(pos, nodeLocation);
+    pos+=str(currY).length()+1;
+    temp+=str(currY)+",";
+    //Which team the node belongs to
+    team=int(extract(pos, nodeLocation));
+    pos+=str(team).length()+1;
+    temp+=str(team)+",";
+    //Size of the node
+    num=int(extract(pos, nodeLocation));
+    pos+=str(num).length()+1;
+    //Increment
+    if (team!=0)
+    {
+      if (num<=nodeMax-incrementValue)
+        num+=incrementValue;
+      else
+        num=nodeMax;
+    }
+    temp+=str(num)+",";
+  }
+  nodeLocation=temp;
+}
+//Draws all edges connected to a certain node
+int drawEdges(int nodePos, String s)
+{
+  int pos=0, temp, num, lcv, destPos;
+  float currX, currY, destX=0, destY=0;
+  //X cords of the node
+  currX=extract(nodePos, nodeLocation);
+  nodePos+=str(currX).length()+1;
+  //Y cords of the node
+  currY=extract(nodePos, nodeLocation);
+  nodePos+=str(currY).length()+3; //Skipping over the team, since its always a 1 digit number
+  //Weight is unneeded, skip
+  temp=int(extract(nodePos, nodeLocation));
+  nodePos+=str(temp).length()+1;
+  //nodePos moves to the next node in the graph
+  while (pos<s.length())
+  {
+    num=int(extract(pos, s));
+    pos+=str(num).length()+1;
+    lcv=1;
+    destPos=0;
+    //Move to the index required
+    while (lcv<=num)
+    {
+      destX=extract(destPos, nodeLocation);
+      destPos+=str(destX).length()+1;
+      destY=extract(destPos, nodeLocation);
+      destPos+=str(destY).length()+3;
+      temp=int(extract(destPos, nodeLocation));
+      destPos+=str(temp).length()+1;
+      lcv++;
+    }
+    //Draw the edge
+    line(currX, currY, destX, destY);
+  }
+  return nodePos;
+}
+//Draws the edges for all 20 nodes
+void drawGraph()
+{
+  int pos=0, team, num;
+  float currX, currY;
+  pos=drawEdges(pos, edges1);
+  pos=drawEdges(pos, edges2);
+  pos=drawEdges(pos, edges3);
+  pos=drawEdges(pos, edges4);
+  pos=drawEdges(pos, edges5);
+  pos=drawEdges(pos, edges6);
+  pos=drawEdges(pos, edges7);
+  pos=drawEdges(pos, edges8);
+  pos=drawEdges(pos, edges9);
+  pos=drawEdges(pos, edges10);
+  pos=drawEdges(pos, edges11);
+  pos=drawEdges(pos, edges12);
+  pos=drawEdges(pos, edges13);
+  pos=drawEdges(pos, edges14);
+  pos=drawEdges(pos, edges15);
+  pos=drawEdges(pos, edges16);
+  pos=drawEdges(pos, edges17);
+  pos=drawEdges(pos, edges18);
+  pos=drawEdges(pos, edges19);
+  pos=drawEdges(pos, edges20);
+  pos=0;
+  //Coloring the node with the color of their team, and their size
+  noStroke();
+  while (pos<nodeLocation.length())
+  {
+    //X cord of the node
+    currX=extract(pos, nodeLocation);
+    pos+=str(currX).length()+1;
+    //Y cord of the node
+    currY=extract(pos, nodeLocation);
+    pos+=str(currY).length()+1;
+    //Which team the node belongs to
+    team=int(extract(pos, nodeLocation));
+    pos+=str(team).length()+1;
+    //Fill with the color of their team
+    if (team==0)
+      fill(255);
+    else if (team==1)
+      fill(color1);
+    else if (team==2)
+      fill(color2);
+    else if (team==3)
+      fill(color3);
+    else
+      fill(color4);
+    //Weight of node
+    num=int(extract(pos, nodeLocation));
+    pos+=str(num).length()+1;
+    circle(currX, currY, num);
+  }
+  fill(255);
+}
+//Generates a projectile moving towards a target, the parameters indicate the properties of this projectile
+void createProjectile(float currX, float currY, float destX, float destY, int position, int nodeWeight, int weight, int team)
+{
+  //Diff of x and y cord, considering them as 2 of the perpendicular sides of a right triangle, with the
+  //hypotenuse being the line connecting the 2 points
+  float angle, x, y, deltaX=abs(roundTo(currX-destX)), deltaY=abs(roundTo(currY-destY));
+  //=> We can calculate the angle with the arctan function
+  angle=atan(deltaY/deltaX);
+  y=roundTo(globalSpeed*(sin(angle)));
+  //If the destination is below the current point, reverse y direction
+  if (currY>destY)
+    y=-y;
+  x=roundTo(sqrt(globalSpeed*globalSpeed-y*y));
+  //If the destination is behind the current point, reverse x direction
+  if (currX>destX)
+    x=-x;
+  //Location in X and Y cords, X speed and Y speed, destination of node in X and Y cord, node index in the nodeLocation string, node weight, team it belongs to and strength of this projectile
+  projectiles+=str(roundTo(currX+x*2))+","+str(roundTo(currY+y*2))+","+str(x)+","+str(y)+","+str(destX)+","+str(destY)+","+str(position)+","+str(nodeWeight)+","+str(team)+","+str(weight)+";";
+}
+//Check for collisions between projectiles or between projectile and their targeted node
+//Note: Probably the most complicated method in the entire program
+void collision()
+{
+  int num, i, a, pos=0, destPos, nodeDestNum, nodeNum, currWeight, currTeam, destWeight, destTeam, nodeWeight, placeHolder;
+  float currX, currY, nodeX, nodeY, destX, destY, speed;
+  String temp="", secondTemp="", nodeTemp="";
+  //temp represents the remaining projectiles, since it can change in between collisions
+  while (pos<projectiles.length())
+  {
+    //Iterate through each projectile
+    //Because currWeight could change, save all values before that and currWeight after changing to combine into one string
+    secondTemp="";
+    //X cord of the projectile
+    currX=extract(pos, projectiles);
+    pos+=str(currX).length()+1;
+    secondTemp+=str(currX)+",";
+    //Y cord of the projectile
+    currY=extract(pos, projectiles);
+    pos+=str(currY).length()+1;
+    secondTemp+=str(currY)+",";
+    //X speed of the projectile, unneeded
+    speed=extract(pos, projectiles);
+    pos+=str(speed).length()+1;
+    secondTemp+=str(speed)+",";
+    //Y speed of the projectile, unneeded
+    speed=extract(pos, projectiles);
+    pos+=str(speed).length()+1;
+    secondTemp+=str(speed)+",";
+    //X cord of the destination of projectile
+    nodeX=extract(pos, projectiles);
+    pos+=str(nodeX).length()+1;
+    secondTemp+=str(nodeX)+",";
+    //Y cord of the destination of projectile
+    nodeY=extract(pos, projectiles);
+    pos+=str(nodeY).length()+1;
+    secondTemp+=str(nodeY)+",";
+    //Index of the destination of projectile
+    nodeNum=int(extract(pos, projectiles));
+    pos+=str(nodeNum).length()+1;
+    secondTemp+=str(nodeNum)+",";
+    //Weight of the destination of projectile
+    nodeWeight=int(extract(pos, projectiles));
+    pos+=str(nodeWeight).length()+1;
+    secondTemp+=str(nodeWeight)+",";
+    //Which team the projectile belongs to
+    currTeam=int(extract(pos, projectiles));
+    pos+=str(currTeam).length()+1;
+    secondTemp+=str(currTeam)+",";
+    //Current weight of the projectile
+    currWeight=int(extract(pos, projectiles));
+    pos+=str(currWeight).length()+1;
+    //The values after currWeight
+    //Iterate through every other projectile
+    for (destPos=0; destPos<projectiles.length(); )
+    {
+      //X cord of the other projectile
+      destX=extract(destPos, projectiles);
+      destPos+=str(destX).length()+1;
+      //Y cord of the other projectile
+      destY=extract(destPos, projectiles);
+      destPos+=str(destY).length()+1;
+      //The 4 next values are not required, skipping them with a random variable
+      for (i=0; i<4; i++)
+      {
+        speed=extract(destPos, projectiles);
+        destPos+=str(speed).length()+1;
+      }
+      //The 2 next values aren't important either, but they have to be integer to not ruin the program
+      placeHolder=int(extract(destPos, projectiles));
+      destPos+=str(placeHolder).length()+1;
+      placeHolder=int(extract(destPos, projectiles));
+      destPos+=str(placeHolder).length()+1;
+      //Which team the other projectile belongs to
+      destTeam=int(extract(destPos, projectiles));
+      destPos+=str(destTeam).length()+1;
+      //The weight of the other projectile
+      destWeight=int(extract(destPos, projectiles));
+      destPos+=str(destWeight).length()+1;
+      //If projectiles are from different teams
+      if (destTeam!=currTeam)
+      {
+        //If they collide
+        if (distance(currX, currY, destX, destY)<((currWeight+destWeight)/2))
+        {
+          //Decrease by a certain amount
+          a=min(destWeight, currWeight);
+          currWeight-=a;
+        }
+      }
+      //If the weight of projectile == 0, skips to save time
+      if (currWeight==0)
+        break;
+    }
+    //If the projectile collided with a node without its weight being 0
+    if (currWeight!=0 && distance(currX, currY, nodeX, nodeY)<=(nodeWeight+currWeight)/2)
+    {
+      destPos=0;
+      nodeDestNum=1;
+      //Nodes might switch properties, rewrite the nodeLocation string
+      nodeTemp="";
+      //Iterate through every node
+      while (destPos<nodeLocation.length())
+      {
+        //X cord of node
+        currX=extract(destPos, nodeLocation);
+        destPos+=str(currX).length()+1;
+        nodeTemp+=str(currX)+",";
+        //Y cord of node
+        currY=extract(destPos, nodeLocation);
+        destPos+=str(currY).length()+1;
+        nodeTemp+=str(currY)+",";
+        //Which team the node belongs to
+        destTeam=int(extract(destPos, nodeLocation));
+        destPos+=str(destTeam).length()+1;
+        //Weight of node
+        num=int(extract(destPos, nodeLocation));
+        destPos+=str(num).length()+1;
+        //Move to the desired node
+        if (nodeDestNum==nodeNum)
+        {
+          //Attack!
+          if (currTeam!=destTeam)
+          {
+            //The node has been defeated! Changes team!
+            if (num<=currWeight)
+            {
+              destTeam=currTeam;
+              num=10;
+            } else
+              //Well, at least it got weaker
+              num-=currWeight;
+          }
+          //Helping!
+          else
+          {
+            //Increase to a max of nodeMax
+            destTeam=currTeam;
+            num=min(nodeMax, num+currWeight);
+          }
+          //Destroys the projectile either way but we need to keep going to not mess up nodeTemp
+          currWeight=0;
+        }
+        nodeTemp+=str(destTeam)+",";
+        nodeTemp+=str(num)+",";
+        //Counting up
+        nodeDestNum++;
+      }
+      nodeLocation=nodeTemp;
+    }
+    secondTemp+=str(currWeight)+",";
+    //Delete the projectile if the weight=0
+    if (currWeight==0)
+      continue;
+    temp+=secondTemp;
+  }
+  projectiles=temp;
+}
+//The AI thinks for each node that belongs in a team
+int AINode(int nodePos, String s)
+{
+  int pos=0, temp=0, currTeam, destTeam=0, num, currWeight, lcv, destPos;
+  int rng;
+  float currX, currY, destX=0, destY=0;
+  //X cord of node
+  currX=extract(nodePos, nodeLocation);
+  nodePos+=str(currX).length()+1;
+  locationNode+=str(currX)+",";
+  //Y cord of node
+  currY=extract(nodePos, nodeLocation);
+  nodePos+=str(currY).length()+1;
+  locationNode+=str(currY)+",";
+  //Which team the node belongs to
+  currTeam=int(extract(nodePos, nodeLocation));
+  nodePos+=str(currTeam).length()+1;
+  locationNode+=str(currTeam)+",";
+  //Weight of node
+  currWeight=int(extract(nodePos, nodeLocation));
+  nodePos+=str(currWeight).length()+1;
+  //If its a no-team node, skip
+  if (currTeam==0)
+  {
+    locationNode+=str(currWeight)+",";
+    return nodePos;
+  }
+  while (pos<s.length())
+  {
+    //Iterate through every neighboring node
+    num=int(extract(pos, s));
+    pos+=str(num).length()+1;
+    lcv=1;
+    destPos=0;
+    //Find the node specified by the index
+    while (lcv<=num)
+    {
+      //X cord of the other node
+      destX=extract(destPos, nodeLocation);
+      destPos+=str(destX).length()+1;
+      //Y cord of the other node
+      destY=extract(destPos, nodeLocation);
+      destPos+=str(destY).length()+1;
+      //Which team the other node
+      destTeam=int(extract(destPos, nodeLocation));
+      destPos+=str(destTeam).length()+1;
+      //Weight of the node, unneeded
+      temp=int(extract(destPos, nodeLocation));
+      destPos+=str(temp).length()+1;
+      lcv++;
+    }
+    //That is an enemy!
+    if (destTeam!=currTeam)
+    {
+      rng=int(random(101));
+      //30% chance of attacking
+      if (rng<=30 && currWeight>=20)
+      {
+        //Create a projectile shooting towards it
+        createProjectile(currX, currY, destX, destY, num, temp, int(currWeight/2), currTeam);
+        currWeight=currWeight-int(currWeight/2);
+      }
+    }
+    //It's a friend :D!
+    else
+    {
+      rng=int(random(101));
+      //allyHelp% chance of helping
+      if (rng<=allyHelp && currWeight>=20)
+      {
+        //Create a projectile shooting towards it
+        createProjectile(currX, currY, destX, destY, num, temp, int(currWeight/2), currTeam);
+        currWeight=currWeight-int(currWeight/2);
+      }
+    }
+  }
+  locationNode+=str(currWeight)+",";
+  return nodePos;
+}
+//Moves and render projectiles
+void projectileRender()
+{
+  int pos=0, currTeam, nodeWeight, nodeNum, currWeight;
+  float currX, currY, speedX, speedY, nodeX, nodeY;
+  String temp="", secondTemp="";
+  while (pos<projectiles.length())
+  {
+    //projectiles string will change values
+    secondTemp="";
+    //X cord of projectile
+    currX=extract(pos, projectiles);
+    pos+=str(currX).length()+1;
+    //Y cord of projectile
+    currY=extract(pos, projectiles);
+    pos+=str(currY).length()+1;
+    //X speed of projectile
+    speedX=extract(pos, projectiles);
+    pos+=str(speedX).length()+1;
+    secondTemp+=str(speedX)+",";
+    //Y cord of projectile
+    speedY=extract(pos, projectiles);
+    pos+=str(speedY).length()+1;
+    secondTemp+=str(speedY)+",";
+    //X cord of the destination of projectile
+    nodeX=extract(pos, projectiles);
+    pos+=str(nodeX).length()+1;
+    secondTemp+=str(nodeX)+",";
+    //Y cord of the destination of projectile
+    nodeY=extract(pos, projectiles);
+    pos+=str(nodeY).length()+1;
+    secondTemp+=str(nodeY)+",";
+    //Index of the destination of projectile
+    nodeNum=int(extract(pos, projectiles));
+    pos+=str(nodeNum).length()+1;
+    secondTemp+=str(nodeNum)+",";
+    //Weight of the destination of projectile
+    nodeWeight=int(extract(pos, projectiles));
+    pos+=str(nodeWeight).length()+1;
+    secondTemp+=str(nodeWeight)+",";
+    //The team that this projectile belongs to
+    currTeam=int(extract(pos, projectiles));
+    pos+=str(currTeam).length()+1;
+    secondTemp+=str(currTeam)+",";
+    //Current weight of the projectile
+    currWeight=int(extract(pos, projectiles));
+    pos+=str(currWeight).length()+1;
+    secondTemp+=str(currWeight)+",";
+    //Color them according to their teams
+    if (currTeam==1)
+      fill(color1);
+    else if (currTeam==2)
+      fill(color2);
+    else if (currTeam==3)
+      fill(color3);
+    else
+      fill(color4);
+    //Move them with a speedX and speedY
+    currX=roundTo(currX+speedX);
+    currY=roundTo(currY+speedY);
+    temp+=str(currX)+",";
+    temp+=str(currY)+",";
+    //Render it
+    circle(currX, currY, currWeight);
+    temp+=secondTemp;
+  }
+  projectiles=temp;
+}
+//Calls AINode for every node
+void AI()
+{
+  int pos=0;
+  pos=AINode(pos, edges1);
+  pos=AINode(pos, edges2);
+  pos=AINode(pos, edges3);
+  pos=AINode(pos, edges4);
+  pos=AINode(pos, edges5);
+  pos=AINode(pos, edges6);
+  pos=AINode(pos, edges7);
+  pos=AINode(pos, edges8);
+  pos=AINode(pos, edges9);
+  pos=AINode(pos, edges10);
+  pos=AINode(pos, edges11);
+  pos=AINode(pos, edges12);
+  pos=AINode(pos, edges13);
+  pos=AINode(pos, edges14);
+  pos=AINode(pos, edges15);
+  pos=AINode(pos, edges16);
+  pos=AINode(pos, edges17);
+  pos=AINode(pos, edges18);
+  pos=AINode(pos, edges19);
+  pos=AINode(pos, edges20);
+}
+//Eliminates repeated elements for the string s
+String elimRepEach(String s)
+{
+  int pos=0, nextPos=0, currNum=0, checkNum=0, c;
+  String newS="";
+  //Iterate through each element
+  while (pos<s.length())
+  {
+    currNum=int(extract(pos, s));
+    pos+=str(currNum).length()+1;
+    nextPos=pos;
+    c=0;
+    //Check all elements after it, since the elements before have been checked
+    while (nextPos<s.length())
+    {
+      checkNum=int(extract(nextPos, s));
+      nextPos+=str(checkNum).length()+1;
+      //There is a duplicate
+      if (checkNum==currNum)
+      {
+        c=1;
+        break;
+      }
+    }
+    //No duplicate to this? Add this to a new string
+    if (c==0)
+      newS+=str(currNum)+",";
+  }
+  return newS;
+}
+//Deletes the repeated elements in every edge strings
+void elimRep()
+{
+  edges1=elimRepEach(edges1);
+  edges2=elimRepEach(edges2);
+  edges3=elimRepEach(edges3);
+  edges4=elimRepEach(edges4);
+  edges5=elimRepEach(edges5);
+  edges6=elimRepEach(edges6);
+  edges7=elimRepEach(edges7);
+  edges8=elimRepEach(edges8);
+  edges9=elimRepEach(edges9);
+  edges10=elimRepEach(edges10);
+  edges11=elimRepEach(edges11);
+  edges12=elimRepEach(edges12);
+  edges13=elimRepEach(edges13);
+  edges14=elimRepEach(edges14);
+  edges15=elimRepEach(edges15);
+  edges16=elimRepEach(edges16);
+  edges17=elimRepEach(edges17);
+  edges18=elimRepEach(edges18);
+  edges19=elimRepEach(edges19);
+  edges20=elimRepEach(edges20);
+}
+//Counts the number of node belonging to each team
+void colorGet()
+{
+  team1=0;
+  team2=0;
+  team3=0;
+  team4=0;
+  int pos=0, team, placeholder, i;
+  float temp;
+  while (pos<nodeLocation.length())
+  {
+    //currX, currY doesn't matter
+    for (i=0; i<2; i++)
+    {
+      temp=extract(pos, nodeLocation);
+      pos+=str(temp).length()+1;
+    }
+    team=int(extract(pos, nodeLocation));
+    pos+=str(team).length()+1;
+    if (team==1)
+      team1++;
+    else if (team==2)
+      team2++;
+    else if (team==3)
+      team3++;
+    else if (team==4)
+      team4++;
+    //The weight doesn't matter
+    placeholder=int(extract(pos, nodeLocation));
+    pos+=str(placeholder).length()+1;
+  }
+  if (team1==numNodes || team2==numNodes || team3==numNodes || team4==numNodes) //If a team has all 20 nodes
+  {
+    strokeWeight(0);
+    fill(255);
+    rect(518, 232, 500, 400);
+    fill(0);
+    rect(568, 282, 400, 300);
+    rect(0, 0, 336, height);
+    //Does the finishing touches to make the graph not look too weird
+    gridInitiate();
+    drawGraph();
+    collision();
+    projectileRender();
+    //Simulation ended, announces winner
+    if (team1==numNodes)
+      fill(color1);
+    else if (team2==numNodes)
+      fill(color2);
+    else if (team3==numNodes)
+      fill(color3);
+    else if (team4==numNodes)
+      fill(color4);
+    rect(690, 312, 100, 75);
+    text("Wins!", 810, 355);
+    textSize(20);
+    text("If you would like to replay the simulation,", 600, 450);
+    text("Click the restart button!", 665, 480);
+    gameState=3;
+  }
+}
+//Restarting simulation
+void reset()
+{
+  //Clear and reset all variables with strings, returns to set up screen
+  nodeLocation="";
+  projectiles="";
+  locationNode="";
+  edges1="";
+  edges2="";
+  edges3="";
+  edges4="";
+  edges5="";
+  edges6="";
+  edges7="";
+  edges8="";
+  edges9="";
+  edges10="";
+  edges11="";
+  edges12="";
+  edges13="";
+  edges14="";
+  edges15="";
+  edges16="";
+  edges17="";
+  edges18="";
+  edges19="";
+  edges20="";
+  counter=0;
+  AICounter=0;
+  incrementValue=10;
+  team1=0;
+  team2=0;
+  team3=0;
+  team4=0;
+  gameState=1;
+  fill(255);
+  textAlign(CENTER);
+}
+//Player functions
+void mouseClicked()
+{
+  //Simulation running
+  if (gameState==2 || gameState==3)
+  {
+    //Within the box of player functions
+    if (mouseX<=336 && mouseY<=250)
+    {
+      //Pause/Play button
+      if (insideRect(265, 325, 12, 72)==1)
+        pause=(pause+1)%2; //Switch 0 -> 1 and vice versa
+      else if (insideRect(165, 245, 12, 72)==1) //2X button
+      {
+        speed=(speed+1)%3; //Cycle through 0, 1, 2
+        //Alters the speed of the simulation
+        if (speed==0)
+          frameRate(30);
+        else
+          frameRate(speed*60);
+      } else if (insideRect(25, 145, 12, 72)==1)
+        reset();
+      else if (insideTri(268, 85, 268, 105, 288, 95)==1)
+      {
+        //Increase increment value by 5
+        if (incrementValue<=115)
+          incrementValue+=5;
+      } else if ((insideTri(298, 85, 298, 105, 318, 95)==1) || (insideTri(308, 85, 308, 105, 328, 95)==1))
+      {
+        //Increase increment value by 25
+        if (incrementValue<=95)
+          incrementValue+=25;
+      } else if (insideTri(68, 85, 68, 105, 48, 95)==1)
+      {
+        //Decrease increment value by 5
+        if (incrementValue>=5)
+          incrementValue-=5;
+      } else if (insideTri(38, 85, 38, 105, 18, 95)==1 || insideTri(28, 85, 28, 105, 8, 95)==1)
+      {
+        //Decrease increment value by 25
+        if (incrementValue>=25)
+          incrementValue-=25;
+      } else if (mouseY>=190 && mouseY<=240)
+      {
+        //Switches team for the cursor
+        if (mouseX>=15 && mouseX<=85)
+          userTeam=1;
+        else if (mouseX>=95 && mouseX<=165)
+          userTeam=2;
+        else if (mouseX>=175 && mouseX<=245)
+          userTeam=3;
+        else if (mouseX>=255 && mouseX<=325)
+          userTeam=4;
+      }
+    } else if (mouseX>336)
+    {
+      //Checking to see which node mouse is clicked on
+      //nodeLocation will change
+      String temp="";
+      int pos=0, team, weight;
+      float currX, currY;
+      while (pos<nodeLocation.length())
+      {
+        //X cords of node
+        currX=extract(pos, nodeLocation);
+        pos+=str(currX).length()+1;
+        //Y cords of node
+        currY=extract(pos, nodeLocation);
+        pos+=str(currY).length()+1;
+        //Which team this node belongs to
+        team=int(extract(pos, nodeLocation));
+        pos+=str(team).length()+1;
+        //Weight of this node
+        weight=int(extract(pos, nodeLocation));
+        pos+=str(weight).length()+1;
+        //It is this node, because it's within the boundaries of the node
+        if (distance(currX, currY, mouseX, mouseY)<=(weight/2) && userTeam!=0)
+          team=userTeam;
+        temp+=currX+",";
+        temp+=currY+",";
+        temp+=team+",";
+        temp+=weight+",";
+      }
+      nodeLocation=temp;
+    }
+  } else if (gameState==0) //Intro phase
+  {
+    //Skip button
+    if (insideRect(width-200, width, 0, 100)==1)
+    {
+      //Moves on to the set up phase
+      gameState=1;
+    }
+  } else //Setup phase
+  {
+    if (mouseY>=500) //Color selector
+    {
+      int a;
+      //Rose
+      if (insideRectSum(192, 572, 123, 60)==1)
+      {
+        a=deselect(240, 135, 132);
+        if (a==0)
+          select(240, 135, 132);
+      }
+      //Red
+      else if (insideRectSum(339, 572, 123, 60)==1)
+      {
+        a=deselect(255, 0, 0);
+        if (a==0)
+          select(255, 0, 0);
+      }
+      //Dark red
+      else if (insideRectSum(486, 572, 123, 60)==1)
+      {
+        a=deselect(58, 6, 3);
+        if (a==0)
+          select(58, 6, 3);
+      }
+      //Sky blue
+      else if (insideRectSum(633, 572, 123, 60)==1)
+      {
+        a=deselect(115, 251, 253);
+        if (a==0)
+          select(115, 251, 253);
+      }
+      //Blue
+      else if (insideRectSum(780, 572, 123, 60)==1)
+      {
+        a=deselect(0, 35, 245);
+        if (a==0)
+          select(0, 35, 245);
+      }
+      //Dark blue
+      else if (insideRectSum(927, 572, 123, 60)==1)
+      {
+        a=deselect(0, 12, 123);
+        if (a==0)
+          select(0, 12, 123);
+      }
+      //Yellow
+      else if (insideRectSum(1074, 572, 123, 60)==1)
+      {
+        a=deselect(255, 253, 85);
+        if (a==0)
+          select(255, 253, 85);
+      }
+      //Orange
+      else if (insideRectSum(1221, 572, 123, 60)==1)
+      {
+        a=deselect(240, 134, 80);
+        if (a==0)
+          select(240, 134, 80);
+      }
+      //Purple
+      else if (insideRectSum(192, 690, 123, 60)==1)
+      {
+        a=deselect(115, 43, 245);
+        if (a==0)
+          select(115, 43, 245);
+      }
+      //Dark purple
+      else if (insideRectSum(339, 690, 123, 60)==1)
+      {
+        a=deselect(58, 8, 62);
+        if (a==0)
+          select(58, 8, 62);
+      }
+      //Light green
+      else if (insideRectSum(486, 690, 123, 60)==1)
+      {
+        a=deselect(161, 251, 142);
+        if (a==0)
+          select(161, 251, 142);
+      }
+      //Green
+      else if (insideRectSum(633, 690, 123, 60)==1)
+      {
+        a=deselect(117, 249, 77);
+        if (a==0)
+          select(117, 249, 77);
+      }
+      //Dark green
+      else if (insideRectSum(780, 690, 123, 60)==1)
+      {
+        a=deselect(55, 126, 71);
+        if (a==0)
+          select(55, 126, 71);
+      }
+      //Teal
+      else if (insideRectSum(927, 690, 123, 60)==1)
+      {
+        a=deselect(96, 152, 153);
+        if (a==0)
+          select(96, 152, 153);
+      }
+      //Pink
+      else if (insideRectSum(1074, 690, 123, 60)==1)
+      {
+        a=deselect(239, 136, 190);
+        if (a==0)
+          select(239, 136, 190);
+      }
+      //Lavender
+      else if (insideRectSum(1221, 690, 123, 60)==1)
+      {
+        a=deselect(238, 138, 248);
+        if (a==0)
+          select(238, 138, 248);
+      }
+    } else
+    {
+      ///AIInterval
+      //Min
+      if (insideRectSum(520, 140, 50, 50)==1)
+        AIInterval=10;
+      //Near min
+      if (insideRectSum(600, 140, 50, 50)==1)
+        AIInterval=20;
+      //Low mid
+      if (insideRectSum(680, 140, 50, 50)==1)
+        AIInterval=50;
+      //High mid
+      if (insideRectSum(520, 210, 50, 50)==1)
+        AIInterval=100;
+      //Near max
+      if (insideRectSum(600, 210, 50, 50)==1)
+        AIInterval=200;
+      //Max
+      if (insideRectSum(680, 210, 50, 50)==1)
+        AIInterval=300;
+      ///Interval
+      //Min
+      if (insideRectSum(520, 300, 50, 50)==1)
+        interval=10;
+      //Near min
+      if (insideRectSum(600, 300, 50, 50)==1)
+        interval=20;
+      //Low mid
+      if (insideRectSum(680, 300, 50, 50)==1)
+        interval=40;
+      //High mid
+      if (insideRectSum(520, 370, 50, 50)==1)
+        interval=80;
+      //Near max
+      if (insideRectSum(600, 370, 50, 50)==1)
+        interval=100;
+      //Max
+      if (insideRectSum(680, 370, 50, 50)==1)
+        interval=200;
+      ///Max size of node
+      //Min
+      if (insideRectSum(1110, 140, 50, 50)==1)
+        nodeMax=50;
+      //Near min
+      if (insideRectSum(1190, 140, 50, 50)==1)
+        nodeMax=70;
+      //Low mid
+      if (insideRectSum(1270, 140, 50, 50)==1)
+        nodeMax=100;
+      //High mid
+      if (insideRectSum(1110, 210, 50, 50)==1)
+        nodeMax=120;
+      //Near max
+      if (insideRectSum(1190, 210, 50, 50)==1)
+        nodeMax=150;
+      //Max
+      if (insideRectSum(1270, 210, 50, 50)==1)
+        nodeMax=170;
+      ///Chance of helping ally
+      //Min
+      if (insideRectSum(1110, 300, 50, 50)==1)
+        allyHelp=0;
+      //Near min
+      if (insideRectSum(1190, 300, 50, 50)==1)
+        allyHelp=10;
+      //Low mid
+      if (insideRectSum(1270, 300, 50, 50)==1)
+        allyHelp=20;
+      //High mid
+      if (insideRectSum(1110, 370, 50, 50)==1)
+        allyHelp=30;
+      //Near max
+      if (insideRectSum(1190, 370, 50, 50)==1)
+        allyHelp=40;
+      //Max
+      if (insideRectSum(1270, 370, 50, 50)==1)
+        allyHelp=50;
+      ///Start button
+      if (insideRectSum(1268, 20, 100, 80)==1)
+      {
+        //If there are less than 4 colors
+        if (deselect(0, 0, 0)==0)
+        {
+          textAlign(LEFT);
+          gameState=2;
+          //Set up the game
+          graphSetup();
+          //Removes duplicates in each string
+          elimRep();
+          fill(255);
+        } else
+          print("You need 4 colors to start!");
+      }
+    }
+  }
+}
+void setup()
+{
+  frameRate(60);
+  //Mimics the 1920x1080 resolution of normal monitors
+  size(1536, 864);
+  background(0);
+}
+void draw()
+{
+  if (gameState==0) //Intro phase
+  {
+    textSize(70);
+    textAlign(CENTER);
+    background(0);
+    strokeWeight(0);
+    //Skip button
+    fill(216, 51, 255);
+    rect(width-200, 0, 200, 100);
+    fill(0);
+    text("Skip?", width-100, 70);
+    //If the first part of the intro is still going
+    if (text1!=1 || incr1!=-2)
+    {
+      fill(text1);
+      text("From the creator of Quantum Pong...", width/2, height/2-200);
+      text1+=incr1;
+      //Stays on screen for a while
+      if (text1==255)
+        incr1=0;
+      if (text1==255 || incr1==-2)
+      {
+        fill(text2);
+        text("Comes a bigger project...", width/2, height/2-100);
+        text2+=incr2;
+        //Stays on screen for a while
+        if (text2==255)
+          incr2=0;
+      }
+      if (text2==255 || incr1==-2)
+      {
+        fill(text3, 0, 0);
+        text("20 hours of work, 1967 lines...", width/2, height/2+100);
+        //Stays on screen for a while
+        text3+=incr3;
+        if (text3==255)
+          incr3=0;
+      }
+      if (text3==255 || incr1==-2)
+      {
+        fill(0, 0, text4);
+        text("A masterpiece", width/2, height/2+200);
+        text4+=incr4;
+        //Done with the first part, make all the text disappear
+        if (text4==255)
+        {
+          incr1=-2;
+          incr2=-2;
+          incr3=-2;
+          incr4=-2;
+        }
+      }
+    } else if ((text1==1 && incr1==-2) && (text5!=1 || incr5!=-2)) //Part 2 of intro
+    {
+      fill(text5, text5, 0);
+      text("Tran Pham Gia Bao proudly presents...", width/2, height/2-100);
+      text5+=incr5;
+      //Stays on screen for a while
+      if (text5==255)
+        incr5=0;
+      if (text5==255 || incr5==-2)
+      {
+        fill(text6, 0, 0);
+        text("War Simulator: Hand of God edition", width/2, height/2);
+        text6+=incr6;
+        //Done with the second part, make all the text disappear
+        if (text6==255)
+        {
+          incr5=-2;
+          incr6=-2;
+        }
+      }
+    } else if (text5==1 && incr5==-2) //Done with the intro
+    {
+      gameState=1;
+      //Moves on to the set up phase
+    }
+  } else if (gameState==1) //Set up phase
+  {
+    background(0);
+    fill(255);
+    textSize(25);
+    text("If it's the first time running the simulation, you should leave everything as it is!", width/2, height-30);
+    strokeWeight(1);
+    stroke(255);
+    fill(0);
+    rect(168, 120, 1200, 380);
+    rect(168, 500, 1200, 300);
+    ///AIInterval changer
+    strokeWeight(2);
+    stroke(200, 0, 0);
+    fill(255);
+    rect(190, 140, 300, 120);
+    fill(0);
+    text("Agressiveness of AI", 340, 190);
+    textSize(15);
+    text("AIInterval in the code", 340, 220);
+    textSize(25);
+    stroke(255);
+    //Min
+    fill(74, 8, 4);
+    if (AIInterval==10)
+      stroke(255, 0, 0);
+    square(520, 140, 50);
+    if (AIInterval==10)
+      stroke(255);
+    fill(255);
+    text("10", 545, 175);
+    //Near min
+    fill(88, 19, 94);
+    if (AIInterval==20)
+      stroke(255, 0, 0);
+    square(600, 140, 50);
+    if (AIInterval==20)
+      stroke(255);
+    fill(255);
+    text("20", 625, 175);
+    //Low mid
+    fill(31, 52, 59);
+    if (AIInterval==50)
+      stroke(255, 0, 0);
+    square(680, 140, 50);
+    if (AIInterval==50)
+      stroke(255);
+    fill(255);
+    text("50", 705, 175);
+    //High mid
+    fill(34, 64, 18);
+    if (AIInterval==100)
+      stroke(255, 0, 0);
+    square(520, 210, 50);
+    if (AIInterval==100)
+      stroke(255);
+    fill(255);
+    text("100", 545, 245);
+    //Near max
+    fill(112, 250, 63);
+    if (AIInterval==200)
+      stroke(255, 0, 0);
+    square(600, 210, 50);
+    if (AIInterval==200)
+      stroke(255);
+    fill(255);
+    text("200", 625, 245);
+    //Max
+    fill(0);
+    if (AIInterval==300)
+      stroke(255, 0, 0);
+    square(680, 210, 50);
+    if (AIInterval==300)
+      stroke(255);
+    fill(255);
+    text("300", 705, 245);
+    ///Interval
+    strokeWeight(2);
+    stroke(200, 0, 0);
+    fill(255);
+    rect(190, 300, 300, 120);
+    fill(0);
+    text("Increment interval", 340, 350);
+    textSize(15);
+    text("interval in the code", 340, 380);
+    textSize(25);
+    stroke(255);
+    //Min
+    fill(74, 8, 4);
+    if (interval==10)
+      stroke(255, 0, 0);
+    square(520, 300, 50);
+    if (interval==10)
+      stroke(255);
+    fill(255);
+    text("10", 545, 335);
+    //Near min
+    fill(88, 19, 94);
+    if (interval==20)
+      stroke(255, 0, 0);
+    square(600, 300, 50);
+    if (interval==20)
+      stroke(255);
+    fill(255);
+    text("20", 625, 335);
+    //Low mid
+    fill(31, 52, 59);
+    if (interval==40)
+      stroke(255, 0, 0);
+    square(680, 300, 50);
+    if (interval==40)
+      stroke(255);
+    fill(255);
+    text("40", 705, 335);
+    //High mid
+    fill(34, 64, 18);
+    if (interval==80)
+      stroke(255, 0, 0);
+    square(520, 370, 50);
+    if (interval==80)
+      stroke(255);
+    fill(255);
+    text("80", 545, 405);
+    //Near max
+    fill(112, 250, 63);
+    if (interval==100)
+      stroke(255, 0, 0);
+    square(600, 370, 50);
+    if (interval==100)
+      stroke(255);
+    fill(255);
+    text("100", 625, 405);
+    //Max
+    fill(0);
+    if (interval==200)
+      stroke(255, 0, 0);
+    square(680, 370, 50);
+    if (interval==200)
+      stroke(255);
+    fill(255);
+    text("200", 705, 405);
+    ///Max size of node
+    strokeWeight(2);
+    stroke(200, 0, 0);
+    fill(255);
+    rect(780, 140, 300, 120);
+    fill(0);
+    text("Max size of node", 930, 190);
+    textSize(15);
+    text("nodeMax in the code", 930, 220);
+    textSize(25);
+    stroke(255);
+    //Min
+    fill(74, 8, 4);
+    if (nodeMax==50)
+      stroke(255, 0, 0);
+    square(1110, 140, 50);
+    if (nodeMax==50)
+      stroke(255);
+    fill(255);
+    text("50", 1135, 175);
+    //Near min
+    fill(88, 19, 94);
+    if (nodeMax==70)
+      stroke(255, 0, 0);
+    square(1190, 140, 50);
+    if (nodeMax==70)
+      stroke(255);
+    fill(255);
+    text("70", 1215, 175);
+    //Low mid
+    fill(31, 52, 59);
+    if (nodeMax==100)
+      stroke(255, 0, 0);
+    square(1270, 140, 50);
+    if (nodeMax==100)
+      stroke(255);
+    fill(255);
+    text("100", 1295, 175);
+    //High mid
+    fill(34, 64, 18);
+    if (nodeMax==120)
+      stroke(255, 0, 0);
+    square(1110, 210, 50);
+    if (nodeMax==120)
+      stroke(255);
+    fill(255);
+    text("120", 1135, 245);
+    //Near max
+    fill(112, 250, 63);
+    if (nodeMax==150)
+      stroke(255, 0, 0);
+    square(1190, 210, 50);
+    if (nodeMax==150)
+      stroke(255);
+    fill(255);
+    text("150", 1215, 245);
+    //Max
+    fill(0);
+    if (nodeMax==170)
+      stroke(255, 0, 0);
+    square(1270, 210, 50);
+    if (nodeMax==170)
+      stroke(255);
+    fill(255);
+    text("170", 1295, 245);
+    ///Chance of helping ally
+    strokeWeight(2);
+    stroke(200, 0, 0);
+    fill(255);
+    rect(780, 300, 300, 120);
+    fill(0);
+    text("Chance of helping ally", 930, 350);
+    textSize(15);
+    text("allyHelp in the code", 930, 380);
+    textSize(25);
+    stroke(255);
+    //Min
+    fill(74, 8, 4);
+    if (allyHelp==0)
+      stroke(255, 0, 0);
+    square(1110, 300, 50);
+    if (allyHelp==0)
+      stroke(255);
+    fill(255);
+    text("0", 1135, 335);
+    //Near min
+    fill(88, 19, 94);
+    if (allyHelp==10)
+      stroke(255, 0, 0);
+    square(1190, 300, 50);
+    if (allyHelp==10)
+      stroke(255);
+    fill(255);
+    text("10", 1215, 335);
+    //Low mid
+    fill(31, 52, 59);
+    if (allyHelp==20)
+      stroke(255, 0, 0);
+    square(1270, 300, 50);
+    if (allyHelp==20)
+      stroke(255);
+    fill(255);
+    text("20", 1295, 335);
+    //High mid
+    fill(34, 64, 18);
+    if (allyHelp==30)
+      stroke(255, 0, 0);
+    square(1110, 370, 50);
+    if (allyHelp==30)
+      stroke(255);
+    fill(255);
+    text("30", 1135, 405);
+    //Near max
+    fill(112, 250, 63);
+    if (allyHelp==40)
+      stroke(255, 0, 0);
+    square(1190, 370, 50);
+    if (allyHelp==40)
+      stroke(255);
+    fill(255);
+    text("40", 1215, 405);
+    //Max
+    fill(0);
+    if (allyHelp==50)
+      stroke(255, 0, 0);
+    square(1270, 370, 50);
+    if (allyHelp==50)
+      stroke(255);
+    fill(255);
+    text("50", 1295, 405);
+    ///Simulation speed bar
+    textSize(20);
+    strokeWeight(1);
+    stroke(255);
+    fill(0);
+    rect(288, 435, 960, 30);
+    noStroke();
+    int score=calculatePoints();
+    fill(0, 24, 204);
+    text("Snail's pace", 288, 485);
+    fill(148, 28, 245);
+    text("Sluggish", 528, 485);
+    fill(219, 72, 219);
+    text("Mediocre", 768, 485);
+    fill(219, 36, 160);
+    text("Rapid", 1008, 485);
+    fill(219, 9, 47);
+    text("Blitz", 1248, 485);
+    if (score<=8)
+      fill(0, 24, 204);
+    else if (score<=11)
+      fill(148, 28, 245);
+    else if (score<=14)
+      fill(219, 72, 219);
+    else if (score<=17)
+      fill(219, 36, 160);
+    else
+      fill(219, 9, 47);
+    if (score>=6)
+      rect(289, 436, (score-6)*80-1, 29);
+    else
+      rect(289, 436, 0, 29);
+    ///16 rectangles for selecting color
+    textSize(25);
+    fill(255);
+    text("Click on a selected color to deselect it, click on an unselected color to select it! There has to be 4 colors!", width/2, 540);
+    //Rose
+    checkColor(240, 135, 132, 192, 572);
+    fill(240, 135, 132);
+    rect(192, 572, 123, 60);
+    text("Rose", 253, 657);
+    //Red
+    checkColor(255, 0, 0, 339, 572);
+    fill(255, 0, 0);
+    rect(339, 572, 123, 60);
+    text("Red", 400, 657);
+    //Dark red
+    checkColor(58, 6, 3, 486, 572);
+    fill(58, 6, 3);
+    rect(486, 572, 123, 60);
+    text("Dark red", 547, 657);
+    //Sky blue
+    checkColor(115, 251, 253, 633, 572);
+    fill(115, 251, 253);
+    rect(633, 572, 123, 60);
+    text("Sky blue", 694, 657);
+    //Blue
+    checkColor(0, 35, 245, 780, 572);
+    fill(0, 35, 245);
+    rect(780, 572, 123, 60);
+    text("Blue", 841, 657);
+    //Dark blue
+    checkColor(0, 12, 123, 927, 572);
+    fill(0, 12, 123);
+    rect(927, 572, 123, 60);
+    text("Dark blue", 988, 657);
+    //Yellow
+    checkColor(255, 253, 85, 1074, 572);
+    fill(255, 253, 85);
+    rect(1074, 572, 123, 60);
+    text("Yellow", 1135, 657);
+    //Orange
+    checkColor(240, 134, 80, 1221, 572);
+    fill(240, 134, 80);
+    rect(1221, 572, 123, 60);
+    text("Orange", 1282, 657);
+    //Purple
+    checkColor(115, 43, 245, 192, 690);
+    fill(115, 43, 245);
+    rect(192, 690, 123, 60);
+    text("Purple", 253, 775);
+    //Dark purple
+    checkColor(58, 8, 62, 339, 690);
+    fill(58, 8, 62);
+    rect(339, 690, 123, 60);
+    text("Dark purple", 400, 775);
+    //Light green
+    checkColor(161, 251, 142, 486, 690);
+    fill(161, 251, 142);
+    rect(486, 690, 123, 60);
+    text("Light green", 547, 775);
+    //Green
+    checkColor(117, 249, 77, 633, 690);
+    fill(117, 249, 77);
+    rect(633, 690, 123, 60);
+    text("Green", 694, 775);
+    //Dark green
+    checkColor(55, 126, 71, 780, 690);
+    fill(55, 126, 71);
+    rect(780, 690, 123, 60);
+    text("Dark green", 841, 775);
+    //Teal
+    checkColor(96, 152, 153, 927, 690);
+    fill(96, 152, 153);
+    rect(927, 690, 123, 60);
+    text("Teal", 988, 775);
+    //Pink
+    checkColor(239, 136, 190, 1074, 690);
+    fill(239, 136, 190);
+    rect(1074, 690, 123, 60);
+    text("Pink", 1135, 775);
+    //Lavender
+    checkColor(238, 138, 248, 1221, 690);
+    fill(238, 138, 248);
+    rect(1221, 690, 123, 60);
+    text("Lavender", 1282, 775);
+    ///Start button
+    strokeWeight(0);
+    fill(0, 255, 0);
+    rect(1268, 20, 100, 80);
+    fill(0);
+    text("Start!", 1318, 60);
+  } else if (gameState==2) //Simulation running
+  {
+    //Redraw the graph every frame if its not paused
+    if (pause==0)
+      background(0);
+    gridInitiate();
+    if (pause==0)
+    {
+      int a=intervalCounter();
+      int b=AICounter();
+      //If interval counter reached a certain point, increment
+      if (a==1)
+        increments();
+      //If AI interval is reached, call AI
+      if (b==1)
+      {
+        //nodeLocation could change after AI, need to create a temp for that, resetting it
+        locationNode="";
+        AI();
+        nodeLocation=locationNode;
+      }
+      //Draws the graph
+      drawGraph();
+      //Checks for collision
+      collision();
+      //Render all projectiles
+      projectileRender();
+      //Feeds information for the scoreboard
+      colorGet();
+    }
+  }
+}
